@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="tr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ChatKit Embed Demo</title>
+    <style>
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            margin: 0;
+            padding: 32px;
+            line-height: 1.5;
+            background: #0b1220;
+            color: #e2e8f0;
+        }
+
+        .card {
+            max-width: 820px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        code {
+            background: rgba(148, 163, 184, 0.12);
+            padding: 2px 6px;
+            border-radius: 8px;
+        }
+
+        a {
+            color: #93c5fd;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1 style="margin-top:0">ChatKit Embed Demo</h1>
+        <p>
+            Sağ altta chat bubble görünmeli. Bubble’a tıklayınca ChatKit paneli açılır.
+        </p>
+        <p>
+            Backend endpoint: <code>POST /api/chatkit/session</code>
+        </p>
+        <p>
+            Embed script: <code>/embed.js</code>
+        </p>
+    </div>
+
+    <script src="/embed.js" data-api-base="http://localhost:3000" data-title="Havamania Asistan" data-position="right"
+        data-primary="#111"></script>
+</body>
+
+</html>
