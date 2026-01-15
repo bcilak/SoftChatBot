@@ -19,18 +19,15 @@ function json(body: any, init?: ResponseInit) {
     return Response.json(body, init);
 }
 
-function hashToken(token: string, secret: string): string {
-    const combined = token + secret;
-    let hash = 0;
-    for (let i = 0; i < combined.length; i++) {
-        const char = combined.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-    }
-    return Math.abs(hash).toString(36);
+function corsHeaders() {
+    return {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    };
 }
 
-async function assertCookieAuth(): Promise<void> {
+async function assertBearerAuth(request: Request): Promise<void> {
     const adminKey = process.env.ADMIN_API_KEY;
     if (!adminKey) {
         const err = new Error('Admin disabled') as Error & { code: string };
@@ -38,22 +35,21 @@ async function assertCookieAuth(): Promise<void> {
         throw err;
     }
 
-    const cookieStore = await cookies();
-    const session = cookieStore.get('admin_session');
-    const tokenHash = cookieStore.get('admin_token_hash');
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
 
-    if (!session?.value || !tokenHash?.value) {
+    if (!token || token !== adminKey) {
         const err = new Error('Unauthorized') as Error & { code: string };
         err.code = 'UNAUTHORIZED';
         throw err;
     }
+}
 
-    const expectedHash = hashToken(session.value, adminKey);
-    if (expectedHash !== tokenHash.value) {
-        const err = new Error('Unauthorized') as Error & { code: string };
-        err.code = 'UNAUTHORIZED';
-        throw err;
-    }
+export async function OPTIONS() {
+    return new Response(null, {
+        status: 204,
+        headers: corsHeaders(),
+    });
 }
 
 type GenerateEmbedRequest = {
@@ -73,7 +69,7 @@ type GenerateEmbedRequest = {
 
 export async function POST(request: Request) {
     try {
-        await assertCookieAuth();
+        await assertBearerAuth(request);
 
         const body: GenerateEmbedRequest = await request.json();
 
@@ -82,7 +78,7 @@ export async function POST(request: Request) {
         if (!validateWorkflowId(workflowId)) {
             return json(
                 { error: 'INVALID_WORKFLOW_ID', message: 'Workflow ID geçersiz. wf_ ile başlamalı ve en az 10 karakter olmalı.' },
-                { status: 400 }
+                { status: 400, headers: corsHeaders() }
             );
         }
 
@@ -91,7 +87,7 @@ export async function POST(request: Request) {
         if (!openaiApiKey.startsWith('sk-') || openaiApiKey.length < 20) {
             return json(
                 { error: 'INVALID_API_KEY', message: 'OpenAI API Key geçersiz. sk- ile başlamalı.' },
-                { status: 400 }
+                { status: 400, headers: corsHeaders() }
             );
         }
 
@@ -100,7 +96,7 @@ export async function POST(request: Request) {
         if (!origin.startsWith('http://') && !origin.startsWith('https://')) {
             return json(
                 { error: 'INVALID_ORIGIN', message: 'Origin http:// veya https:// ile başlamalı.' },
-                { status: 400 }
+                { status: 400, headers: corsHeaders() }
             );
         }
 
@@ -153,7 +149,7 @@ export async function POST(request: Request) {
                 workflow_key: existingWorkflow.key,
                 origin: origin,
                 message: 'Workflow güncellendi (API Key değiştirildi).',
-            });
+            }, { headers: corsHeaders() });
         }
 
         // Create new workflow
@@ -189,25 +185,25 @@ export async function POST(request: Request) {
             embed_code: embedCode,
             workflow_key: newWorkflow.key,
             origin: origin,
-        });
+        }, { headers: corsHeaders() });
 
     } catch (err: any) {
         if (err?.code === 'ADMIN_DISABLED') {
             return json(
                 { error: 'ADMIN_DISABLED', message: 'Admin API devre dışı. ADMIN_API_KEY env değişkenini ayarlayın.' },
-                { status: 404 }
+                { status: 404, headers: corsHeaders() }
             );
         }
         if (err?.code === 'UNAUTHORIZED') {
             return json(
                 { error: 'UNAUTHORIZED', message: 'Oturum geçersiz. Lütfen tekrar giriş yapın.' },
-                { status: 401 }
+                { status: 401, headers: corsHeaders() }
             );
         }
         console.error('[generate-embed] Error:', err);
         return json(
             { error: 'GENERATE_FAILED', message: 'Embed kodu oluşturulamadı.' },
-            { status: 500 }
+            { status: 500, headers: corsHeaders() }
         );
     }
 }

@@ -12,18 +12,15 @@ function json(body: any, init?: ResponseInit) {
     return Response.json(body, init);
 }
 
-function hashToken(token: string, secret: string): string {
-    const combined = token + secret;
-    let hash = 0;
-    for (let i = 0; i < combined.length; i++) {
-        const char = combined.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-    }
-    return Math.abs(hash).toString(36);
+function corsHeaders() {
+    return {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    };
 }
 
-async function assertCookieAuth(): Promise<void> {
+async function assertBearerAuth(request: Request): Promise<void> {
     const adminKey = process.env.ADMIN_API_KEY;
     if (!adminKey) {
         const err = new Error('Admin disabled') as Error & { code: string };
@@ -31,22 +28,21 @@ async function assertCookieAuth(): Promise<void> {
         throw err;
     }
 
-    const cookieStore = await cookies();
-    const session = cookieStore.get('admin_session');
-    const tokenHash = cookieStore.get('admin_token_hash');
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
 
-    if (!session?.value || !tokenHash?.value) {
+    if (!token || token !== adminKey) {
         const err = new Error('Unauthorized') as Error & { code: string };
         err.code = 'UNAUTHORIZED';
         throw err;
     }
+}
 
-    const expectedHash = hashToken(session.value, adminKey);
-    if (expectedHash !== tokenHash.value) {
-        const err = new Error('Unauthorized') as Error & { code: string };
-        err.code = 'UNAUTHORIZED';
-        throw err;
-    }
+export async function OPTIONS() {
+    return new Response(null, {
+        status: 204,
+        headers: corsHeaders(),
+    });
 }
 
 type UpdateWorkflowRequest = {
@@ -60,7 +56,7 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        await assertCookieAuth();
+        await assertBearerAuth(request);
 
         const { id } = await params;
         const workflowId = parseInt(id, 10);
@@ -68,7 +64,7 @@ export async function PUT(
         if (isNaN(workflowId)) {
             return json(
                 { error: 'INVALID_ID', message: 'Geçersiz workflow ID.' },
-                { status: 400 }
+                { status: 400, headers: corsHeaders() }
             );
         }
 
@@ -76,7 +72,7 @@ export async function PUT(
         if (!workflow) {
             return json(
                 { error: 'NOT_FOUND', message: 'Workflow bulunamadı.' },
-                { status: 404 }
+                { status: 404, headers: corsHeaders() }
             );
         }
 
@@ -93,7 +89,7 @@ export async function PUT(
             if (apiKey && (!apiKey.startsWith('sk-') || apiKey.length < 20)) {
                 return json(
                     { error: 'INVALID_API_KEY', message: 'OpenAI API Key geçersiz.' },
-                    { status: 400 }
+                    { status: 400, headers: corsHeaders() }
                 );
             }
             if (apiKey) {
@@ -104,7 +100,7 @@ export async function PUT(
         if (Object.keys(updateData).length === 0) {
             return json(
                 { error: 'NO_CHANGES', message: 'Güncellenecek alan belirtilmedi.' },
-                { status: 400 }
+                { status: 400, headers: corsHeaders() }
             );
         }
 
@@ -113,19 +109,19 @@ export async function PUT(
         return json({
             success: true,
             message: 'Workflow güncellendi.',
-        });
+        }, { headers: corsHeaders() });
 
     } catch (err: any) {
         if (err?.code === 'UNAUTHORIZED') {
             return json(
                 { error: 'UNAUTHORIZED', message: 'Oturum geçersiz.' },
-                { status: 401 }
+                { status: 401, headers: corsHeaders() }
             );
         }
         console.error('[admin/workflows/[id]] PUT Error:', err);
         return json(
             { error: 'UPDATE_FAILED', message: 'Güncelleme başarısız.' },
-            { status: 500 }
+            { status: 500, headers: corsHeaders() }
         );
     }
 }
@@ -136,7 +132,7 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        await assertCookieAuth();
+        await assertBearerAuth(request);
 
         const { id } = await params;
         const workflowId = parseInt(id, 10);
@@ -144,7 +140,7 @@ export async function DELETE(
         if (isNaN(workflowId)) {
             return json(
                 { error: 'INVALID_ID', message: 'Geçersiz workflow ID.' },
-                { status: 400 }
+                { status: 400, headers: corsHeaders() }
             );
         }
 
@@ -152,7 +148,7 @@ export async function DELETE(
         if (!workflow) {
             return json(
                 { error: 'NOT_FOUND', message: 'Workflow bulunamadı.' },
-                { status: 404 }
+                { status: 404, headers: corsHeaders() }
             );
         }
 
@@ -161,19 +157,19 @@ export async function DELETE(
         return json({
             success: true,
             message: 'Workflow silindi.',
-        });
+        }, { headers: corsHeaders() });
 
     } catch (err: any) {
         if (err?.code === 'UNAUTHORIZED') {
             return json(
                 { error: 'UNAUTHORIZED', message: 'Oturum geçersiz.' },
-                { status: 401 }
+                { status: 401, headers: corsHeaders() }
             );
         }
         console.error('[admin/workflows/[id]] DELETE Error:', err);
         return json(
             { error: 'DELETE_FAILED', message: 'Silme işlemi başarısız.' },
-            { status: 500 }
+            { status: 500, headers: corsHeaders() }
         );
     }
 }
