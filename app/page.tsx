@@ -32,7 +32,7 @@ export default function HomePage() {
                 </Link>
 
                 <p style={styles.footer}>
-                    Powered by OpenAI
+                    Powered by Altıkod Digital Solutions
                 </p>
             </div>
         </div>
