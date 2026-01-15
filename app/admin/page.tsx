@@ -56,13 +56,26 @@ export default function AdminPage() {
     useEffect(() => {
         const checkAuth = async () => {
             try {
-                const res = await fetch('/api/auth/check');
+                const token = localStorage.getItem('admin_token');
+                if (!token) {
+                    router.push('/login');
+                    return;
+                }
+                
+                const res = await fetch('/api/auth/check', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
                 if (!res.ok) {
+                    localStorage.removeItem('admin_token');
                     router.push('/login');
                     return;
                 }
                 setCheckingAuth(false);
             } catch {
+                localStorage.removeItem('admin_token');
                 router.push('/login');
             }
         };
@@ -80,7 +93,10 @@ export default function AdminPage() {
         setLoadingWorkflows(true);
         setListError(null);
         try {
-            const res = await fetch('/api/admin/workflows', { credentials: 'include' });
+            const token = localStorage.getItem('admin_token');
+            const res = await fetch('/api/admin/workflows', { 
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Yüklenemedi');
             setWorkflows(data.workflows || []);
@@ -92,7 +108,7 @@ export default function AdminPage() {
     };
 
     const handleLogout = async () => {
-        await fetch('/api/auth/logout', { method: 'POST' });
+        localStorage.removeItem('admin_token');
         router.push('/login');
     };
 
@@ -103,10 +119,13 @@ export default function AdminPage() {
         setResult(null);
 
         try {
+            const token = localStorage.getItem('admin_token');
             const res = await fetch('/api/admin/generate-embed', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: JSON.stringify(formData),
             });
 
@@ -163,10 +182,13 @@ export default function AdminPage() {
         }
 
         try {
+            const token = localStorage.getItem('admin_token');
             const res = await fetch(`/api/admin/workflows/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: JSON.stringify(updateData),
             });
 
@@ -188,9 +210,10 @@ export default function AdminPage() {
         setListSuccess(null);
 
         try {
+            const token = localStorage.getItem('admin_token');
             const res = await fetch(`/api/admin/workflows/${id}`, {
                 method: 'DELETE',
-                credentials: 'include',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
             });
 
             const data = await res.json();

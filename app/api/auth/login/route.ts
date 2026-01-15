@@ -12,7 +12,6 @@ function corsHeaders() {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Credentials': 'true',
     };
 }
 
@@ -21,12 +20,6 @@ export async function OPTIONS() {
         status: 204,
         headers: corsHeaders(),
     });
-}
-
-// Simple token generation (in production, use a proper JWT library)
-function generateToken(): string {
-    const randomBytes = crypto.getRandomValues(new Uint8Array(32));
-    return Array.from(randomBytes, b => b.toString(16).padStart(2, '0')).join('');
 }
 
 export async function POST(request: Request) {
@@ -50,30 +43,12 @@ export async function POST(request: Request) {
             );
         }
 
-        // Generate session token
-        const token = generateToken();
-
-        // Set HTTP-only cookie (expires in 24 hours)
-        const cookieStore = await cookies();
-        cookieStore.set('admin_session', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24, // 24 hours
-            path: '/',
-        });
-
-        // Also store the token hash for validation (simple approach)
-        // In production, store this in database with expiry
-        cookieStore.set('admin_token_hash', hashToken(token, adminKey), {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24,
-            path: '/',
-        });
-
-        return json({ success: true, message: 'Giriş başarılı.' }, { headers: corsHeaders() });
+        // Return the admin key as token (simple approach for same-domain admin panel)
+        return json({ 
+            success: true, 
+            message: 'Giriş başarılı.',
+            token: adminKey 
+        }, { headers: corsHeaders() });
 
     } catch (err: any) {
         console.error('[login] Error:', err);
@@ -82,17 +57,4 @@ export async function POST(request: Request) {
             { status: 500, headers: corsHeaders() }
         );
     }
-}
-
-// Simple hash function for token validation
-function hashToken(token: string, secret: string): string {
-    // Simple hash using XOR and base64 (not cryptographically secure, but sufficient for this use case)
-    const combined = token + secret;
-    let hash = 0;
-    for (let i = 0; i < combined.length; i++) {
-        const char = combined.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-    }
-    return Math.abs(hash).toString(36);
 }

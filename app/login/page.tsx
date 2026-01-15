@@ -27,6 +27,11 @@ export default function LoginPage() {
                 throw new Error(data.message || 'Giriş başarısız');
             }
 
+            // Save token to localStorage
+            if (data.token) {
+                localStorage.setItem('admin_token', data.token);
+            }
+
             // Redirect to admin panel
             router.push('/admin');
         } catch (err: any) {
