@@ -20,15 +20,30 @@ function safeError(code: string) {
     return json({ error: code }, { status: 400 });
 }
 
+function corsHeaders() {
+    return {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    };
+}
+
+export async function OPTIONS() {
+    return new Response(null, {
+        status: 204,
+        headers: corsHeaders(),
+    });
+}
+
 export async function GET(request: Request) {
     try {
         assertAdminAuth(request);
         const cfg = loadSitesConfig() || ({ version: 1, sites: [] } satisfies SitesConfigFile);
-        return json({ config: cfg, path: getSitesConfigPath() }, { status: 200 });
+        return json({ config: cfg, path: getSitesConfigPath() }, { status: 200, headers: corsHeaders() });
     } catch (err: any) {
-        if (!isAdminEnabled()) return json({ error: 'ADMIN_DISABLED' }, { status: 404 });
-        if (err?.code === 'UNAUTHORIZED') return json({ error: 'UNAUTHORIZED' }, { status: 401 });
-        return json({ error: 'ADMIN_FAILED' }, { status: 500 });
+        if (!isAdminEnabled()) return json({ error: 'ADMIN_DISABLED' }, { status: 404, headers: corsHeaders() });
+        if (err?.code === 'UNAUTHORIZED') return json({ error: 'UNAUTHORIZED' }, { status: 401, headers: corsHeaders() });
+        return json({ error: 'ADMIN_FAILED' }, { status: 500, headers: corsHeaders() });
     }
 }
 
@@ -65,10 +80,10 @@ export async function POST(request: Request) {
         else cfg.sites.push(site);
 
         saveSitesConfig(cfg);
-        return json({ ok: true }, { status: 200 });
+        return json({ ok: true }, { status: 200, headers: corsHeaders() });
     } catch (err: any) {
-        if (!isAdminEnabled()) return json({ error: 'ADMIN_DISABLED' }, { status: 404 });
-        if (err?.code === 'UNAUTHORIZED') return json({ error: 'UNAUTHORIZED' }, { status: 401 });
-        return json({ error: 'ADMIN_FAILED' }, { status: 500 });
+        if (!isAdminEnabled()) return json({ error: 'ADMIN_DISABLED' }, { status: 404, headers: corsHeaders() });
+        if (err?.code === 'UNAUTHORIZED') return json({ error: 'UNAUTHORIZED' }, { status: 401, headers: corsHeaders() });
+        return json({ error: 'ADMIN_FAILED' }, { status: 500, headers: corsHeaders() });
     }
 }
