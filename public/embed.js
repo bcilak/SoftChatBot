@@ -8,6 +8,7 @@
     const title = currentScript.getAttribute('data-title') || 'Chat';
     const position = (currentScript.getAttribute('data-position') || 'right').toLowerCase();
     const primary = currentScript.getAttribute('data-primary') || '#15ff00';
+    const fixedWorkflow = currentScript.getAttribute('data-workflow') || null;
 
     if (!apiBase) {
         // Fail silently (no console spam) for production embeds.
@@ -83,6 +84,28 @@
             overflow: hidden;
             text-overflow: ellipsis;
             pointer-events: none;
+        }
+
+        .ck-workflowPicker {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 3;
+            max-width: calc(100% - 140px);
+            height: 32px;
+            padding: 0 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 650;
+            color: #0f172a;
+            background: rgba(248, 250, 252, 0.92);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 10px 24px rgba(0,0,0,0.10);
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+            cursor: pointer;
         }
 
         .ck-topRightMask {
@@ -182,6 +205,11 @@
     titleChip.className = 'ck-titleChip';
     titleChip.textContent = title;
 
+    const workflowSelect = document.createElement('select');
+    workflowSelect.className = 'ck-workflowPicker';
+    workflowSelect.setAttribute('aria-label', 'Workflow');
+    workflowSelect.style.display = 'none';
+
     // ChatKit iframe renders some header controls (e.g. edit/rename) we may want to hide.
     // We cannot reliably style inside the iframe, so we mask the top-right control slot.
     const topRightMask = document.createElement('div');
@@ -195,6 +223,7 @@
     body.appendChild(loading);
 
     panel.appendChild(titleChip);
+    panel.appendChild(workflowSelect);
     panel.appendChild(topRightMask);
     panel.appendChild(closeBtn);
     panel.appendChild(body);
@@ -245,6 +274,63 @@
     let lastSecret = null;
     let lastSecretAt = 0;
 
+    let allowedWorkflows = null;
+    let selectedWorkflowKey = null;
+
+    function storageKey(name) {
+        return `__softchatbot_${name}_${apiBase.replace(/[^a-z0-9]/gi, '_')}`;
+    }
+
+    async function loadAllowedWorkflows() {
+        if (allowedWorkflows) return allowedWorkflows;
+        try {
+            const res = await fetch(`${apiBase.replace(/\/$/, '')}/api/chatkit/workflows`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            if (!res.ok) return null;
+            const data = await res.json();
+            if (!data || !Array.isArray(data.workflows)) return null;
+            allowedWorkflows = {
+                workflows: data.workflows.filter((w) => w && typeof w.key === 'string' && typeof w.label === 'string'),
+                defaultKey: typeof data.default_workflow_key === 'string' ? data.default_workflow_key : null,
+            };
+            return allowedWorkflows;
+        } catch {
+            return null;
+        }
+    }
+
+    function getSavedWorkflowKey() {
+        try {
+            return localStorage.getItem(storageKey('workflow_key'));
+        } catch {
+            return null;
+        }
+    }
+
+    function saveWorkflowKey(key) {
+        try {
+            localStorage.setItem(storageKey('workflow_key'), key);
+        } catch {
+            // ignore
+        }
+    }
+
+    function resetChatSession() {
+        lastSecret = null;
+        inflightSecret = null;
+        lastSecretAt = 0;
+        if (chatkitEl && chatkitEl.parentNode) {
+            try {
+                chatkitEl.parentNode.removeChild(chatkitEl);
+            } catch {
+                // ignore
+            }
+        }
+        chatkitEl = null;
+    }
+
     async function fetchClientSecret(existing) {
         // Small guard against tight loops.
         const now = Date.now();
@@ -258,7 +344,7 @@
             const res = await fetch(`${apiBase.replace(/\/$/, '')}/api/chatkit/session`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user: getDeviceId() }),
+                body: JSON.stringify({ user: getDeviceId(), workflow_key: selectedWorkflowKey }),
             });
 
             if (!res.ok) {
@@ -302,6 +388,44 @@
     async function mountChat() {
         try {
             await loadChatKitScript();
+
+            // If a specific workflow is specified in embed code, use only that one (no dropdown)
+            if (fixedWorkflow) {
+                titleChip.style.display = 'block';
+                workflowSelect.style.display = 'none';
+                selectedWorkflowKey = fixedWorkflow;
+            } else {
+                // No specific workflow in embed code, load all available workflows for this origin
+                const wf = await loadAllowedWorkflows();
+                if (wf && Array.isArray(wf.workflows) && wf.workflows.length > 1) {
+                    titleChip.style.display = 'none';
+                    workflowSelect.style.display = 'block';
+
+                    if (workflowSelect.options.length === 0) {
+                        wf.workflows.forEach((w) => {
+                            const opt = document.createElement('option');
+                            opt.value = w.key;
+                            opt.textContent = w.label;
+                            workflowSelect.appendChild(opt);
+                        });
+                    }
+
+                    const saved = getSavedWorkflowKey();
+                    selectedWorkflowKey = saved || wf.defaultKey || wf.workflows[0].key;
+                    workflowSelect.value = selectedWorkflowKey;
+
+                    workflowSelect.onchange = () => {
+                        selectedWorkflowKey = workflowSelect.value;
+                        saveWorkflowKey(selectedWorkflowKey);
+                        resetChatSession();
+                        mountChat();
+                    };
+                } else {
+                    titleChip.style.display = 'block';
+                    workflowSelect.style.display = 'none';
+                    selectedWorkflowKey = wf && wf.workflows && wf.workflows.length === 1 ? wf.workflows[0].key : null;
+                }
+            }
 
             if (!chatkitEl) {
                 chatkitEl = document.createElement('openai-chatkit');

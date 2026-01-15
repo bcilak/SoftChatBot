@@ -2,8 +2,13 @@ import {
     createChatKitSession,
     defaultChatKitConfigurationFromEnv,
 } from '../../../../server/chatkit';
-import { isOriginAllowed, parseAllowedOrigins } from '../../../../server/cors';
+import { isOriginAllowed, getAllAllowedOrigins } from '../../../../server/cors';
 import { rateLimitOrThrow } from '../../../../server/rateLimit';
+import { validateWorkflowId } from '../../../../server/sitesConfig';
+import {
+    getSiteByOrigin,
+    getWorkflowsBySiteId,
+} from '../../../../server/database';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,7 +24,7 @@ function getRequestIp(req: Request): string {
 }
 
 function corsHeaders(origin: string | null) {
-    const allowed = parseAllowedOrigins(process.env.ALLOW_ORIGINS);
+    const allowed = getAllAllowedOrigins(process.env.ALLOW_ORIGINS);
     const headers: Record<string, string> = {
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
@@ -42,7 +47,7 @@ export async function OPTIONS(request: Request) {
 export async function POST(request: Request) {
     const requestId = crypto.randomUUID();
     const origin = request.headers.get('origin');
-    const allowed = parseAllowedOrigins(process.env.ALLOW_ORIGINS);
+    const allowed = getAllAllowedOrigins(process.env.ALLOW_ORIGINS);
 
     if (origin && !isOriginAllowed(origin, allowed)) {
         return json(
@@ -55,16 +60,8 @@ export async function POST(request: Request) {
     try {
         const rl = rateLimitOrThrow({ key: ip, limit: 60, windowMs: 60_000 });
 
-        const apiKey = process.env.OPENAI_API_KEY;
-        const workflowId = process.env.OPENAI_WORKFLOW_ID;
-
-        if (!apiKey || !workflowId) {
-            console.error(`[${requestId}] Missing env vars: OPENAI_API_KEY/OPENAI_WORKFLOW_ID`);
-            return json(
-                { error: 'SERVER_MISCONFIGURED' },
-                { status: 500, headers: { ...corsHeaders(origin), 'X-Request-Id': requestId } }
-            );
-        }
+        const defaultApiKey = process.env.OPENAI_API_KEY;
+        const envWorkflowId = process.env.OPENAI_WORKFLOW_ID;
 
         let body: any = null;
         try {
@@ -76,6 +73,54 @@ export async function POST(request: Request) {
         const user =
             (typeof body?.user === 'string' && body.user.trim()) ||
             `anon_${crypto.randomUUID()}`;
+
+        // Determine workflow ID and API key from database
+        let workflowId: string | null = null;
+        let apiKey: string | null = null;
+        const workflowKey = typeof body?.workflow_key === 'string' ? body.workflow_key.trim() : '';
+
+        if (origin) {
+            const site = getSiteByOrigin(origin);
+
+            if (site) {
+                // Get workflows from database
+                const workflows = getWorkflowsBySiteId(site.id);
+                const desiredKey = workflowKey || site.default_workflow_key || '';
+
+                // Find matching workflow
+                const match = workflows.find((w) => w.key === desiredKey);
+
+                if (match && validateWorkflowId(match.workflow_id)) {
+                    workflowId = match.workflow_id;
+                    apiKey = match.api_key || defaultApiKey || null;
+                } else if (workflows.length > 0) {
+                    // Use first workflow if no specific key requested
+                    const firstWorkflow = workflows[0];
+                    workflowId = firstWorkflow.workflow_id;
+                    apiKey = firstWorkflow.api_key || defaultApiKey || null;
+                } else {
+                    // Site exists but no workflows
+                    return json(
+                        { error: 'WORKFLOW_NOT_FOUND' },
+                        { status: 404, headers: { ...corsHeaders(origin), 'X-Request-Id': requestId } }
+                    );
+                }
+            }
+        }
+
+        // Fall back to env vars if no database config
+        if (!workflowId && envWorkflowId && validateWorkflowId(envWorkflowId)) {
+            workflowId = envWorkflowId;
+            apiKey = defaultApiKey || null;
+        }
+
+        if (!workflowId || !apiKey) {
+            console.error(`[${requestId}] Missing workflow or API key configuration`);
+            return json(
+                { error: 'SERVER_MISCONFIGURED' },
+                { status: 500, headers: { ...corsHeaders(origin), 'X-Request-Id': requestId } }
+            );
+        }
 
         const session = await createChatKitSession({
             apiKey,

@@ -67,6 +67,38 @@ Web sitenize şunu ekleyin:
 - `data-api-base`: Backend’in bulunduğu base URL
 - `data-position`: `right` veya `left`
 
+## Çoklu website + workflow yönetimi (opsiyonel)
+
+Birden fazla websiteye embed edecekseniz ve workflow sayısı müşteri/site bazında değişecekse, server tarafında **site bazlı allowlist** kullanın.
+
+### 1) Site config dosyası
+
+[data/sites.json](data/sites.json) içinde her origin için workflow listesi tanımlanır:
+
+- `origin`: tam Origin eşleşmesi (örn. `https://musteri-site.com`)
+- `workflows`: `{ key, id (wf_), label }`
+- `default_workflow_key`
+
+> Not: `ALLOW_ORIGINS` yine CORS için zorunlu. Her siteyi `ALLOW_ORIGINS` içine ekleyin.
+
+### 2) Frontend seçim
+
+Embed widget, backend’den `GET /api/chatkit/workflows` ile allowlist’i çeker.
+
+- 1 workflow varsa: sadece başlık gösterir.
+- 2+ workflow varsa: dropdown ile workflow seçtirir ve seçimi localStorage’da saklar.
+
+Seçim, session isteğine `workflow_key` olarak gider ve backend sadece allowlist’teki `wf_` id’lerine izin verir.
+
+### 3) Admin endpoint (opsiyonel)
+
+`ADMIN_API_KEY` set ederseniz, config’i uzaktan güncellemek için:
+
+- `GET /api/admin/sites` (Bearer token gerekli)
+- `POST /api/admin/sites` (origin + workflows ile upsert)
+
+Bu endpoint’leri internete açacaksanız ekstra koruma (VPN, IP allowlist, auth, rate limit) önerilir.
+
 ## Backend endpoint
 
 ### `POST /api/chatkit/session`
