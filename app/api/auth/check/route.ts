@@ -1,4 +1,4 @@
-import { assertAdminAuth, isAdminEnabled } from '../../../../server/sitesConfig';
+import { cookies } from 'next/headers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,6 +12,7 @@ function corsHeaders() {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Credentials': 'true',
     };
 }
 
@@ -22,17 +23,41 @@ export async function OPTIONS() {
     });
 }
 
-export async function GET(request: Request) {
+export async function GET() {
     try {
-        assertAdminAuth(request);
-        return json({ authenticated: true }, { status: 200, headers: corsHeaders() });
-    } catch (err: any) {
-        if (!isAdminEnabled()) {
-            return json({ authenticated: false, error: 'ADMIN_DISABLED' }, { status: 404, headers: corsHeaders() });
+        const cookieStore = await cookies();
+        const session = cookieStore.get('admin_session');
+        const tokenHash = cookieStore.get('admin_token_hash');
+
+        if (!session?.value || !tokenHash?.value) {
+            return json({ authenticated: false }, { status: 401, headers: corsHeaders() });
         }
-        if (err?.code === 'UNAUTHORIZED') {
-            return json({ authenticated: false, error: 'UNAUTHORIZED' }, { status: 401, headers: corsHeaders() });
+
+        const adminKey = process.env.ADMIN_API_KEY;
+        if (!adminKey) {
+            return json({ authenticated: false }, { status: 401, headers: corsHeaders() });
         }
-        return json({ authenticated: false, error: 'AUTH_FAILED' }, { status: 500, headers: corsHeaders() });
+
+        // Verify token hash
+        const expectedHash = hashToken(session.value, adminKey);
+        if (expectedHash !== tokenHash.value) {
+            return json({ authenticated: false }, { status: 401, headers: corsHeaders() });
+        }
+
+        return json({ authenticated: true }, { headers: corsHeaders() });
+
+    } catch {
+        return json({ authenticated: false }, { status: 401, headers: corsHeaders() });
     }
+}
+
+function hashToken(token: string, secret: string): string {
+    const combined = token + secret;
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+        const char = combined.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return Math.abs(hash).toString(36);
 }

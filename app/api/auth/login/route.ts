@@ -7,6 +7,22 @@ function json(body: any, init?: ResponseInit) {
     return Response.json(body, init);
 }
 
+function corsHeaders() {
+    return {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Credentials': 'true',
+    };
+}
+
+export async function OPTIONS() {
+    return new Response(null, {
+        status: 204,
+        headers: corsHeaders(),
+    });
+}
+
 // Simple token generation (in production, use a proper JWT library)
 function generateToken(): string {
     const randomBytes = crypto.getRandomValues(new Uint8Array(32));
@@ -23,14 +39,14 @@ export async function POST(request: Request) {
         if (!adminKey || adminKey.length < 10) {
             return json(
                 { error: 'ADMIN_DISABLED', message: 'Admin girişi devre dışı.' },
-                { status: 403 }
+                { status: 403, headers: corsHeaders() }
             );
         }
 
         if (password !== adminKey) {
             return json(
                 { error: 'INVALID_PASSWORD', message: 'Şifre hatalı.' },
-                { status: 401 }
+                { status: 401, headers: corsHeaders() }
             );
         }
 
@@ -57,13 +73,13 @@ export async function POST(request: Request) {
             path: '/',
         });
 
-        return json({ success: true, message: 'Giriş başarılı.' });
+        return json({ success: true, message: 'Giriş başarılı.' }, { headers: corsHeaders() });
 
     } catch (err: any) {
         console.error('[login] Error:', err);
         return json(
             { error: 'LOGIN_FAILED', message: 'Giriş yapılamadı.' },
-            { status: 500 }
+            { status: 500, headers: corsHeaders() }
         );
     }
 }
