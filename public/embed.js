@@ -9,6 +9,11 @@
     const position = (currentScript.getAttribute('data-position') || 'right').toLowerCase();
     const primary = currentScript.getAttribute('data-primary') || '#15ff00';
     const fixedWorkflow = currentScript.getAttribute('data-workflow') || null;
+    const greeting = currentScript.getAttribute('data-greeting') || null;
+    const colorScheme = currentScript.getAttribute('data-theme') || 'light';
+    const accentColor = currentScript.getAttribute('data-accent') || '#2D8CFF';
+    const radius = currentScript.getAttribute('data-radius') || 'pill';
+    const density = currentScript.getAttribute('data-density') || 'normal';
 
     if (!apiBase) {
         // Fail silently (no console spam) for production embeds.
@@ -444,13 +449,47 @@
 
                 chatkitEl.setOptions({
                     frameTitle: title,
-                    theme: 'light',
                     api: {
                         async getClientSecret(existing) {
                             // ChatKit calls this to start or refresh a session.
                             return fetchClientSecret(existing);
                         },
                     },
+                    theme: {
+                        colorScheme: colorScheme,
+                        color: {
+                            accent: {
+                                primary: accentColor,
+                                level: 2
+                            }
+                        },
+                        radius: radius,
+                        density: density,
+                        typography: {
+                            baseSize: 16,
+                            fontFamily: '"OpenAI Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                            fontFamilyMono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                            fontSources: [
+                                {
+                                    family: 'OpenAI Sans',
+                                    src: 'https://cdn.openai.com/common/fonts/openai-sans/v2/OpenAISans-Regular.woff2',
+                                    weight: 400,
+                                    style: 'normal',
+                                    display: 'swap'
+                                }
+                            ]
+                        }
+                    },
+                    composer: {
+                        placeholder: 'Mesaj yazin...',
+                        attachments: {
+                            enabled: false
+                        }
+                    },
+                    startScreen: {
+                        greeting: greeting || 'Merhaba! Size nasil yardimci olabilirim?',
+                        prompts: []
+                    }
                 });
             }
         } catch {

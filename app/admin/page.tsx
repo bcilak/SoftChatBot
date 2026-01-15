@@ -30,6 +30,11 @@ export default function AdminPage() {
         color: '#111111',
         position: 'right' as 'right' | 'left',
         label: '',
+        greeting: '',
+        theme: 'light' as 'light' | 'dark',
+        accent: '#2D8CFF',
+        radius: 'pill' as 'pill' | 'round' | 'none',
+        density: 'normal' as 'compact' | 'normal' | 'relaxed',
     });
 
     const [loading, setLoading] = useState(false);
@@ -115,6 +120,7 @@ export default function AdminPage() {
                 openai_api_key: '',
                 origin: '',
                 label: '',
+                greeting: '',
             });
         } catch (err: any) {
             setError(err.message || 'Bir hata oluştu');
@@ -302,6 +308,18 @@ export default function AdminPage() {
                             <span style={styles.hint}>Birden fazla workflow varsa secici menude gorunecek isim</span>
                         </div>
 
+                        <div style={styles.field}>
+                            <label style={styles.label}>Karsilama Mesaji (Opsiyonel)</label>
+                            <input
+                                type="text"
+                                value={formData.greeting}
+                                onChange={(e) => setFormData({ ...formData, greeting: e.target.value })}
+                                placeholder="Merhaba! Size nasil yardimci olabilirim?"
+                                style={styles.input}
+                            />
+                            <span style={styles.hint}>Chat acildiginda gorunecek karsilama mesaji</span>
+                        </div>
+
                         <div style={styles.row}>
                             <div style={{ ...styles.field, flex: 1 }}>
                                 <label style={styles.label}>Renk</label>
@@ -322,6 +340,20 @@ export default function AdminPage() {
                             </div>
 
                             <div style={{ ...styles.field, flex: 1 }}>
+                                <label style={styles.label}>Tema</label>
+                                <select
+                                    value={formData.theme}
+                                    onChange={(e) => setFormData({ ...formData, theme: e.target.value as 'light' | 'dark' })}
+                                    style={styles.select}
+                                >
+                                    <option value="light">Acik</option>
+                                    <option value="dark">Koyu</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style={styles.row}>
+                            <div style={{ ...styles.field, flex: 1 }}>
                                 <label style={styles.label}>Pozisyon</label>
                                 <select
                                     value={formData.position}
@@ -331,6 +363,51 @@ export default function AdminPage() {
                                     <option value="right">Sag</option>
                                     <option value="left">Sol</option>
                                 </select>
+                            </div>
+                            <div style={{ ...styles.field, flex: 1 }}>
+                                <label style={styles.label}>Kose Yuvarlakligi</label>
+                                <select
+                                    value={formData.radius}
+                                    onChange={(e) => setFormData({ ...formData, radius: e.target.value as 'pill' | 'round' | 'none' })}
+                                    style={styles.select}
+                                >
+                                    <option value="pill">Pill (Tam Yuvarlak)</option>
+                                    <option value="round">Round (Yuvarlak)</option>
+                                    <option value="none">None (Keskin)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style={styles.row}>
+                            <div style={{ ...styles.field, flex: 1 }}>
+                                <label style={styles.label}>Yogunluk</label>
+                                <select
+                                    value={formData.density}
+                                    onChange={(e) => setFormData({ ...formData, density: e.target.value as 'compact' | 'normal' | 'relaxed' })}
+                                    style={styles.select}
+                                >
+                                    <option value="compact">Compact (Sikisik)</option>
+                                    <option value="normal">Normal</option>
+                                    <option value="relaxed">Relaxed (Gevs)</option>
+                                </select>
+                            </div>
+                            <div style={{ ...styles.field, flex: 1 }}>
+                                <label style={styles.label}>Accent Rengi</label>
+                                <div style={styles.colorWrapper}>
+                                    <input
+                                        type="color"
+                                        value={formData.accent}
+                                        onChange={(e) => setFormData({ ...formData, accent: e.target.value })}
+                                        style={styles.colorInput}
+                                    />
+                                    <input
+                                        type="text"
+                                        value={formData.accent}
+                                        onChange={(e) => setFormData({ ...formData, accent: e.target.value })}
+                                        style={{ ...styles.input, flex: 1 }}
+                                    />
+                                </div>
+                                <span style={styles.hint}>Buton ve link renkleri</span>
                             </div>
                         </div>
 

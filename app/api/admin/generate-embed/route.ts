@@ -64,6 +64,11 @@ type GenerateEmbedRequest = {
     color?: string;
     position?: 'right' | 'left';
     label?: string;
+    greeting?: string;
+    theme?: 'light' | 'dark';
+    accent?: string;
+    radius?: 'pill' | 'round' | 'none';
+    density?: 'compact' | 'normal' | 'relaxed';
 };
 
 export async function POST(request: Request) {
@@ -104,6 +109,11 @@ export async function POST(request: Request) {
         const color = String(body?.color || '#111111').trim();
         const position = body?.position === 'left' ? 'left' : 'right';
         const label = String(body?.label || title).trim();
+        const greeting = String(body?.greeting || '').trim();
+        const theme = body?.theme === 'dark' ? 'dark' : 'light';
+        const accent = String(body?.accent || '#2D8CFF').trim();
+        const radius = ['pill', 'round', 'none'].includes(body?.radius || '') ? body.radius! : 'pill';
+        const density = ['compact', 'normal', 'relaxed'].includes(body?.density || '') ? body.density! : 'normal';
 
         // Generate a unique workflow key from origin
         const originHost = new URL(origin).hostname.replace(/\./g, '_').replace(/[^a-z0-9_-]/gi, '');
@@ -131,6 +141,11 @@ export async function POST(request: Request) {
                 title,
                 color,
                 position,
+                greeting,
+                theme,
+                accent,
+                radius,
+                density,
             });
 
             return json({
@@ -163,6 +178,11 @@ export async function POST(request: Request) {
             title,
             color,
             position,
+            greeting,
+            theme,
+            accent,
+            radius,
+            density,
         });
 
         return json({
@@ -203,6 +223,11 @@ function generateEmbedCode(opts: {
     title: string;
     color: string;
     position: string;
+    greeting: string;
+    theme: string;
+    accent: string;
+    radius: string;
+    density: string;
 }): string {
     const attrs = [
         `src="${opts.apiBase}/embed.js"`,
@@ -211,7 +236,15 @@ function generateEmbedCode(opts: {
         `data-title="${escapeHtml(opts.title)}"`,
         `data-position="${opts.position}"`,
         `data-primary="${opts.color}"`,
+        `data-theme="${opts.theme}"`,
+        `data-accent="${opts.accent}"`,
+        `data-radius="${opts.radius}"`,
+        `data-density="${opts.density}"`,
     ];
+
+    if (opts.greeting) {
+        attrs.push(`data-greeting="${escapeHtml(opts.greeting)}"`);
+    }
 
     return `<script ${attrs.join(' ')}></script>`;
 }
