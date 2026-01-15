@@ -209,6 +209,13 @@ export async function POST(request: Request) {
 }
 
 function getApiBase(request: Request): string {
+    // Check for PUBLIC_URL environment variable first (for production)
+    const publicUrl = process.env.PUBLIC_URL || process.env.NEXT_PUBLIC_URL;
+    if (publicUrl) {
+        return publicUrl.replace(/\/$/, ''); // Remove trailing slash
+    }
+    
+    // Fallback to request URL (for development)
     const url = new URL(request.url);
     return `${url.protocol}//${url.host}`;
 }
