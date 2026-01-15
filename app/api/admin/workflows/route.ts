@@ -45,7 +45,6 @@ export async function OPTIONS() {
         headers: corsHeaders(),
     });
 }
-}
 
 type WorkflowWithSite = DbWorkflow & {
     site_origin: string;
