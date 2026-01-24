@@ -15,7 +15,18 @@ export type ChatKitConfiguration = {
         enabled: boolean;
         max_file_size?: number;
         max_files?: number;
+    };
+};
 
+function envBool(value: string | undefined, defaultValue: boolean): boolean {
+    if (value === undefined) return defaultValue;
+    const v = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'y', 'on'].includes(v)) return true;
+    if (['0', 'false', 'no', 'n', 'off'].includes(v)) return false;
+    return defaultValue;
+}
+
+export function defaultChatKitConfigurationFromEnv(): ChatKitConfiguration {
     // Defaults aim for a minimal UI.
     return {
         automatic_thread_titling: {
