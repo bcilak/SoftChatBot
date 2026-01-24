@@ -77,6 +77,7 @@ export async function POST(request: Request) {
         // Determine workflow ID and API key from database
         let workflowId: string | null = null;
         let apiKey: string | null = null;
+        let chatkitConfig: string | null = null;
         const workflowKey = typeof body?.workflow_key === 'string' ? body.workflow_key.trim() : '';
 
         if (origin) {
@@ -93,11 +94,13 @@ export async function POST(request: Request) {
                 if (match && validateWorkflowId(match.workflow_id)) {
                     workflowId = match.workflow_id;
                     apiKey = match.api_key || defaultApiKey || null;
+                    chatkitConfig = match.chatkit_config;
                 } else if (workflows.length > 0) {
                     // Use first workflow if no specific key requested
                     const firstWorkflow = workflows[0];
                     workflowId = firstWorkflow.workflow_id;
                     apiKey = firstWorkflow.api_key || defaultApiKey || null;
+                    chatkitConfig = firstWorkflow.chatkit_config;
                 } else {
                     // Site exists but no workflows
                     return json(
@@ -122,11 +125,22 @@ export async function POST(request: Request) {
             );
         }
 
+        // Use stored config or fall back to env-based config
+        let configuration = defaultChatKitConfigurationFromEnv();
+        if (chatkitConfig) {
+            try {
+                const parsedConfig = JSON.parse(chatkitConfig);
+                configuration = { ...configuration, ...parsedConfig };
+            } catch (err) {
+                console.warn(`[${requestId}] Failed to parse chatkit_config:`, err);
+            }
+        }
+
         const session = await createChatKitSession({
             apiKey,
             workflowId,
             user,
-            chatkitConfiguration: defaultChatKitConfigurationFromEnv(),
+            chatkitConfiguration: configuration,
         });
 
         return json(

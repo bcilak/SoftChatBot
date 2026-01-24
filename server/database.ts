@@ -48,6 +48,8 @@ function initializeSchema() {
             workflow_id TEXT NOT NULL,
             label TEXT,
             api_key TEXT NOT NULL,
+            script_code TEXT,
+            chatkit_config TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
@@ -80,6 +82,8 @@ export type DbWorkflow = {
     workflow_id: string;
     label: string | null;
     api_key: string;
+    script_code: string | null;
+    chatkit_config: string | null;
     created_at: string;
     updated_at: string;
 };
@@ -145,13 +149,23 @@ export function createWorkflow(data: {
     workflowId: string;
     label: string;
     apiKey: string;
+    scriptCode?: string;
+    chatkitConfig?: string;
 }): DbWorkflow {
     const database = getDb();
     const stmt = database.prepare(`
-        INSERT INTO workflows (site_id, key, workflow_id, label, api_key)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO workflows (site_id, key, workflow_id, label, api_key, script_code, chatkit_config)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    const result = stmt.run(data.siteId, data.key, data.workflowId, data.label, data.apiKey);
+    const result = stmt.run(
+        data.siteId,
+        data.key,
+        data.workflowId,
+        data.label,
+        data.apiKey,
+        data.scriptCode || null,
+        data.chatkitConfig || null
+    );
     return getWorkflowById(result.lastInsertRowid as number)!;
 }
 
@@ -163,6 +177,8 @@ export function getWorkflowById(id: number): DbWorkflow | null {
 export function updateWorkflow(workflowId: number, data: {
     label?: string;
     apiKey?: string;
+    scriptCode?: string;
+    chatkitConfig?: string;
 }): void {
     const database = getDb();
     const updates: string[] = ['updated_at = CURRENT_TIMESTAMP'];
@@ -175,6 +191,14 @@ export function updateWorkflow(workflowId: number, data: {
     if (data.apiKey !== undefined) {
         updates.push('api_key = ?');
         values.push(data.apiKey);
+    }
+    if (data.scriptCode !== undefined) {
+        updates.push('script_code = ?');
+        values.push(data.scriptCode);
+    }
+    if (data.chatkitConfig !== undefined) {
+        updates.push('chatkit_config = ?');
+        values.push(data.chatkitConfig);
     }
 
     values.push(workflowId);

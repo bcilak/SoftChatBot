@@ -65,6 +65,7 @@ type GenerateEmbedRequest = {
     accent?: string;
     radius?: 'pill' | 'round' | 'none';
     density?: 'compact' | 'normal' | 'relaxed';
+    chatkit_config?: string;
 };
 
 export async function POST(request: Request) {
@@ -125,12 +126,7 @@ export async function POST(request: Request) {
         const existingWorkflow = getWorkflowByWorkflowId(site.id, workflowId);
 
         if (existingWorkflow) {
-            // Update existing workflow
-            updateWorkflow(existingWorkflow.id, {
-                label: label,
-                apiKey: openaiApiKey,
-            });
-
+            // Generate updated embed code
             const embedCode = generateEmbedCode({
                 apiBase: getApiBase(request),
                 workflowKey: existingWorkflow.key,
@@ -142,6 +138,14 @@ export async function POST(request: Request) {
                 accent,
                 radius,
                 density,
+            });
+
+            // Update existing workflow
+            updateWorkflow(existingWorkflow.id, {
+                label: label,
+                apiKey: openaiApiKey,
+                scriptCode: embedCode,
+                chatkitConfig: body.chatkit_config || null,
             });
 
             return json({
@@ -159,6 +163,7 @@ export async function POST(request: Request) {
             workflowId: workflowId,
             label: label,
             apiKey: openaiApiKey,
+            chatkitConfig: body.chatkit_config || null,
         });
 
         // Update site default workflow if this is the first workflow
@@ -179,6 +184,11 @@ export async function POST(request: Request) {
             accent,
             radius,
             density,
+        });
+
+        // Save the script code to workflow
+        updateWorkflow(newWorkflow.id, {
+            scriptCode: embedCode,
         });
 
         return json({
@@ -214,7 +224,7 @@ function getApiBase(request: Request): string {
     if (publicUrl) {
         return publicUrl.replace(/\/$/, ''); // Remove trailing slash
     }
-    
+
     // Fallback to request URL (for development)
     const url = new URL(request.url);
     return `${url.protocol}//${url.host}`;

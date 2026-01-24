@@ -18,6 +18,26 @@ type Workflow = {
     api_key: string;
     site_origin: string;
     created_at: string;
+    script_code?: string | null;
+    chatkit_config?: string | null;
+};
+
+type ChatKitConfig = {
+    automatic_thread_titling?: { enabled: boolean };
+    history?: { enabled: boolean; recent_threads?: number };
+    file_upload?: { enabled: boolean; max_file_size?: number; max_files?: number };
+    user_interface?: {
+        theme?: 'light' | 'dark' | 'auto';
+        primary_color?: string;
+        show_branding?: boolean;
+    };
+    behavior?: {
+        auto_focus?: boolean;
+        placeholder_text?: string;
+        welcome_message?: string;
+        typing_indicator?: boolean;
+        sound_enabled?: boolean;
+    };
 };
 
 export default function AdminPage() {
@@ -35,6 +55,20 @@ export default function AdminPage() {
         accent: '#2D8CFF',
         radius: 'pill' as 'pill' | 'round' | 'none',
         density: 'normal' as 'compact' | 'normal' | 'relaxed',
+        // ChatKit Configuration
+        chatkit_auto_titling: false,
+        chatkit_history_enabled: false,
+        chatkit_history_recent_threads: 10,
+        chatkit_file_upload: false,
+        chatkit_file_max_size: 10485760,
+        chatkit_file_max_count: 5,
+        chatkit_ui_theme: 'light' as 'light' | 'dark' | 'auto',
+        chatkit_ui_primary_color: '#2D8CFF',
+        chatkit_ui_show_branding: true,
+        chatkit_behavior_auto_focus: true,
+        chatkit_behavior_placeholder: 'Type a message...',
+        chatkit_behavior_typing_indicator: true,
+        chatkit_behavior_sound: false,
     });
 
     const [loading, setLoading] = useState(false);
@@ -61,13 +95,13 @@ export default function AdminPage() {
                     router.push('/login');
                     return;
                 }
-                
+
                 const res = await fetch('/api/auth/check', {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
                 });
-                
+
                 if (!res.ok) {
                     localStorage.removeItem('admin_token');
                     router.push('/login');
@@ -94,7 +128,7 @@ export default function AdminPage() {
         setListError(null);
         try {
             const token = localStorage.getItem('admin_token');
-            const res = await fetch('/api/admin/workflows', { 
+            const res = await fetch('/api/admin/workflows', {
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
             const data = await res.json();
@@ -120,13 +154,43 @@ export default function AdminPage() {
 
         try {
             const token = localStorage.getItem('admin_token');
+
+            // Build ChatKit configuration object
+            const chatkitConfig: ChatKitConfig = {
+                automatic_thread_titling: { enabled: formData.chatkit_auto_titling },
+                history: {
+                    enabled: formData.chatkit_history_enabled,
+                    recent_threads: formData.chatkit_history_recent_threads
+                },
+                file_upload: {
+                    enabled: formData.chatkit_file_upload,
+                    max_file_size: formData.chatkit_file_max_size,
+                    max_files: formData.chatkit_file_max_count
+                },
+                user_interface: {
+                    theme: formData.chatkit_ui_theme,
+                    primary_color: formData.chatkit_ui_primary_color,
+                    show_branding: formData.chatkit_ui_show_branding
+                },
+                behavior: {
+                    auto_focus: formData.chatkit_behavior_auto_focus,
+                    placeholder_text: formData.chatkit_behavior_placeholder,
+                    welcome_message: formData.greeting || undefined,
+                    typing_indicator: formData.chatkit_behavior_typing_indicator,
+                    sound_enabled: formData.chatkit_behavior_sound
+                }
+            };
+
             const res = await fetch('/api/admin/generate-embed', {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
-                body: JSON.stringify(formData),
+                body: JSON.stringify({
+                    ...formData,
+                    chatkit_config: JSON.stringify(chatkitConfig)
+                }),
             });
 
             const data = await res.json();
@@ -185,7 +249,7 @@ export default function AdminPage() {
             const token = localStorage.getItem('admin_token');
             const res = await fetch(`/api/admin/workflows/${id}`, {
                 method: 'PUT',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
@@ -434,6 +498,197 @@ export default function AdminPage() {
                             </div>
                         </div>
 
+                        {/* ChatKit Configuration Section */}
+                        <div style={styles.section}>
+                            <h3 style={styles.sectionTitle}>ChatKit Yapılandırması</h3>
+                            <p style={styles.sectionSubtitle}>OpenAI ChatKit özelliklerini yapılandırın</p>
+
+                            <div style={styles.row}>
+                                <div style={{ ...styles.field, flex: 1 }}>
+                                    <label style={styles.label}>
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.chatkit_auto_titling}
+                                            onChange={(e) => setFormData({ ...formData, chatkit_auto_titling: e.target.checked })}
+                                            style={styles.checkbox}
+                                        />
+                                        Otomatik Başlık Oluşturma
+                                    </label>
+                                    <span style={styles.hint}>Sohbet geçmişinde otomatik başlıklar oluşturur</span>
+                                </div>
+
+                                <div style={{ ...styles.field, flex: 1 }}>
+                                    <label style={styles.label}>
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.chatkit_history_enabled}
+                                            onChange={(e) => setFormData({ ...formData, chatkit_history_enabled: e.target.checked })}
+                                            style={styles.checkbox}
+                                        />
+                                        Geçmiş Etkin
+                                    </label>
+                                    <span style={styles.hint}>Sohbet geçmişini göster</span>
+                                </div>
+                            </div>
+
+                            {formData.chatkit_history_enabled && (
+                                <div style={styles.field}>
+                                    <label style={styles.label}>Son Sohbet Sayısı</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="100"
+                                        value={formData.chatkit_history_recent_threads}
+                                        onChange={(e) => setFormData({ ...formData, chatkit_history_recent_threads: parseInt(e.target.value) || 10 })}
+                                        style={styles.input}
+                                    />
+                                </div>
+                            )}
+
+                            <div style={styles.row}>
+                                <div style={{ ...styles.field, flex: 1 }}>
+                                    <label style={styles.label}>
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.chatkit_file_upload}
+                                            onChange={(e) => setFormData({ ...formData, chatkit_file_upload: e.target.checked })}
+                                            style={styles.checkbox}
+                                        />
+                                        Dosya Yükleme
+                                    </label>
+                                    <span style={styles.hint}>Kullanıcıların dosya yüklemesine izin ver</span>
+                                </div>
+
+                                <div style={{ ...styles.field, flex: 1 }}>
+                                    <label style={styles.label}>UI Teması</label>
+                                    <select
+                                        value={formData.chatkit_ui_theme}
+                                        onChange={(e) => setFormData({ ...formData, chatkit_ui_theme: e.target.value as 'light' | 'dark' | 'auto' })}
+                                        style={styles.select}
+                                    >
+                                        <option value="light">Açık</option>
+                                        <option value="dark">Koyu</option>
+                                        <option value="auto">Otomatik</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {formData.chatkit_file_upload && (
+                                <div style={styles.row}>
+                                    <div style={{ ...styles.field, flex: 1 }}>
+                                        <label style={styles.label}>Maks Dosya Boyutu (bytes)</label>
+                                        <input
+                                            type="number"
+                                            min="1048576"
+                                            max="104857600"
+                                            value={formData.chatkit_file_max_size}
+                                            onChange={(e) => setFormData({ ...formData, chatkit_file_max_size: parseInt(e.target.value) || 10485760 })}
+                                            style={styles.input}
+                                        />
+                                        <span style={styles.hint}>Varsayılan: 10MB (10485760 bytes)</span>
+                                    </div>
+
+                                    <div style={{ ...styles.field, flex: 1 }}>
+                                        <label style={styles.label}>Maks Dosya Sayısı</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="20"
+                                            value={formData.chatkit_file_max_count}
+                                            onChange={(e) => setFormData({ ...formData, chatkit_file_max_count: parseInt(e.target.value) || 5 })}
+                                            style={styles.input}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div style={styles.row}>
+                                <div style={{ ...styles.field, flex: 1 }}>
+                                    <label style={styles.label}>UI Primary Rengi</label>
+                                    <div style={styles.colorWrapper}>
+                                        <input
+                                            type="color"
+                                            value={formData.chatkit_ui_primary_color}
+                                            onChange={(e) => setFormData({ ...formData, chatkit_ui_primary_color: e.target.value })}
+                                            style={styles.colorInput}
+                                        />
+                                        <input
+                                            type="text"
+                                            value={formData.chatkit_ui_primary_color}
+                                            onChange={(e) => setFormData({ ...formData, chatkit_ui_primary_color: e.target.value })}
+                                            style={{ ...styles.input, flex: 1 }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style={{ ...styles.field, flex: 1 }}>
+                                    <label style={styles.label}>
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.chatkit_ui_show_branding}
+                                            onChange={(e) => setFormData({ ...formData, chatkit_ui_show_branding: e.target.checked })}
+                                            style={styles.checkbox}
+                                        />
+                                        Branding Göster
+                                    </label>
+                                    <span style={styles.hint}>OpenAI branding'ini göster</span>
+                                </div>
+                            </div>
+
+                            <div style={styles.row}>
+                                <div style={{ ...styles.field, flex: 1 }}>
+                                    <label style={styles.label}>
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.chatkit_behavior_auto_focus}
+                                            onChange={(e) => setFormData({ ...formData, chatkit_behavior_auto_focus: e.target.checked })}
+                                            style={styles.checkbox}
+                                        />
+                                        Otomatik Odaklanma
+                                    </label>
+                                    <span style={styles.hint}>Açılışta input alanına odaklan</span>
+                                </div>
+
+                                <div style={{ ...styles.field, flex: 1 }}>
+                                    <label style={styles.label}>
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.chatkit_behavior_typing_indicator}
+                                            onChange={(e) => setFormData({ ...formData, chatkit_behavior_typing_indicator: e.target.checked })}
+                                            style={styles.checkbox}
+                                        />
+                                        Yazma Göstergesi
+                                    </label>
+                                    <span style={styles.hint}>Bot yazarken gösterge göster</span>
+                                </div>
+                            </div>
+
+                            <div style={styles.row}>
+                                <div style={{ ...styles.field, flex: 1 }}>
+                                    <label style={styles.label}>Placeholder Metni</label>
+                                    <input
+                                        type="text"
+                                        value={formData.chatkit_behavior_placeholder}
+                                        onChange={(e) => setFormData({ ...formData, chatkit_behavior_placeholder: e.target.value })}
+                                        style={styles.input}
+                                    />
+                                </div>
+
+                                <div style={{ ...styles.field, flex: 1 }}>
+                                    <label style={styles.label}>
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.chatkit_behavior_sound}
+                                            onChange={(e) => setFormData({ ...formData, chatkit_behavior_sound: e.target.checked })}
+                                            style={styles.checkbox}
+                                        />
+                                        Ses Etkin
+                                    </label>
+                                    <span style={styles.hint}>Bildirim sesleri</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <button type="submit" disabled={loading} style={styles.button}>
                             {loading ? 'Olusturuluyor...' : 'Embed Kodu Olustur'}
                         </button>
@@ -538,6 +793,26 @@ export default function AdminPage() {
                                                         <strong>API Key:</strong> {wf.api_key}
                                                     </span>
                                                 </div>
+                                                {wf.script_code && (
+                                                    <details style={styles.scriptDetails}>
+                                                        <summary style={styles.scriptSummary}>Script Kodunu Görüntüle</summary>
+                                                        <pre style={styles.scriptCode}>{wf.script_code}</pre>
+                                                        <button
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(wf.script_code || '');
+                                                            }}
+                                                            style={styles.copyScriptButton}
+                                                        >
+                                                            Script Kodunu Kopyala
+                                                        </button>
+                                                    </details>
+                                                )}
+                                                {wf.chatkit_config && (
+                                                    <details style={styles.scriptDetails}>
+                                                        <summary style={styles.scriptSummary}>ChatKit Yapılandırmasını Görüntüle</summary>
+                                                        <pre style={styles.scriptCode}>{JSON.stringify(JSON.parse(wf.chatkit_config), null, 2)}</pre>
+                                                    </details>
+                                                )}
                                             </div>
                                             <div style={styles.workflowActions}>
                                                 <button onClick={() => startEdit(wf)} style={styles.editButton}>
@@ -927,5 +1202,70 @@ const styles: { [key: string]: React.CSSProperties } = {
         padding: '8px 16px',
         fontSize: '13px',
         cursor: 'pointer',
+    },
+    section: {
+        backgroundColor: '#0f0f0f',
+        border: '1px solid #2a2a2a',
+        borderRadius: '12px',
+        padding: '20px',
+        marginTop: '24px',
+    },
+    sectionTitle: {
+        color: '#fff',
+        fontSize: '18px',
+        fontWeight: 600,
+        marginTop: 0,
+        marginBottom: '6px',
+    },
+    sectionSubtitle: {
+        color: '#666',
+        fontSize: '13px',
+        marginTop: 0,
+        marginBottom: '20px',
+    },
+    checkbox: {
+        marginRight: '8px',
+        width: '18px',
+        height: '18px',
+        cursor: 'pointer',
+    },
+    scriptDetails: {
+        marginTop: '12px',
+        backgroundColor: '#0f0f0f',
+        borderRadius: '8px',
+        padding: '8px',
+        border: '1px solid #2a2a2a',
+    },
+    scriptSummary: {
+        color: '#3b82f6',
+        cursor: 'pointer',
+        fontSize: '13px',
+        fontWeight: 500,
+        padding: '4px',
+        userSelect: 'none',
+    },
+    scriptCode: {
+        backgroundColor: '#0a0a0a',
+        border: '1px solid #222',
+        borderRadius: '6px',
+        padding: '12px',
+        color: '#e2e8f0',
+        fontSize: '11px',
+        fontFamily: 'Monaco, Consolas, monospace',
+        overflow: 'auto',
+        marginTop: '8px',
+        marginBottom: '8px',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-all',
+    },
+    copyScriptButton: {
+        backgroundColor: '#2563eb',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '6px',
+        padding: '6px 12px',
+        fontSize: '12px',
+        cursor: 'pointer',
+        width: '100%',
     },
 };
