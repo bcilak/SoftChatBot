@@ -514,9 +514,6 @@ export default function AdminPage() {
                                 </div>
                             )}
 
-                            <div style={styles.row}>
-                                <div style={{ ...styles.field, flex: 1 }}>
-                                    <label style={styles.label}>
                             <div style={styles.field}>
                                 <label style={styles.label}>
                                     <input
