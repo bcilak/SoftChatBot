@@ -26,18 +26,6 @@ type ChatKitConfig = {
     automatic_thread_titling?: { enabled: boolean };
     history?: { enabled: boolean; recent_threads?: number };
     file_upload?: { enabled: boolean; max_file_size?: number; max_files?: number };
-    user_interface?: {
-        theme?: 'light' | 'dark' | 'auto';
-        primary_color?: string;
-        show_branding?: boolean;
-    };
-    behavior?: {
-        auto_focus?: boolean;
-        placeholder_text?: string;
-        welcome_message?: string;
-        typing_indicator?: boolean;
-        sound_enabled?: boolean;
-    };
 };
 
 export default function AdminPage() {
@@ -62,13 +50,6 @@ export default function AdminPage() {
         chatkit_file_upload: false,
         chatkit_file_max_size: 10485760,
         chatkit_file_max_count: 5,
-        chatkit_ui_theme: 'light' as 'light' | 'dark' | 'auto',
-        chatkit_ui_primary_color: '#2D8CFF',
-        chatkit_ui_show_branding: true,
-        chatkit_behavior_auto_focus: true,
-        chatkit_behavior_placeholder: 'Type a message...',
-        chatkit_behavior_typing_indicator: true,
-        chatkit_behavior_sound: false,
     });
 
     const [loading, setLoading] = useState(false);
@@ -167,18 +148,6 @@ export default function AdminPage() {
                     max_file_size: formData.chatkit_file_max_size,
                     max_files: formData.chatkit_file_max_count
                 },
-                user_interface: {
-                    theme: formData.chatkit_ui_theme,
-                    primary_color: formData.chatkit_ui_primary_color,
-                    show_branding: formData.chatkit_ui_show_branding
-                },
-                behavior: {
-                    auto_focus: formData.chatkit_behavior_auto_focus,
-                    placeholder_text: formData.chatkit_behavior_placeholder,
-                    welcome_message: formData.greeting || undefined,
-                    typing_indicator: formData.chatkit_behavior_typing_indicator,
-                    sound_enabled: formData.chatkit_behavior_sound
-                }
             };
 
             const res = await fetch('/api/admin/generate-embed', {
