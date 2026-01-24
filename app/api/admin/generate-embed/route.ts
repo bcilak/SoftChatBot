@@ -145,7 +145,7 @@ export async function POST(request: Request) {
                 label: label,
                 apiKey: openaiApiKey,
                 scriptCode: embedCode,
-                chatkitConfig: body.chatkit_config || null,
+                chatkitConfig: body.chatkit_config || undefined,
             });
 
             return json({
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
             workflowId: workflowId,
             label: label,
             apiKey: openaiApiKey,
-            chatkitConfig: body.chatkit_config || null,
+            chatkitConfig: body.chatkit_config || undefined,
         });
 
         // Update site default workflow if this is the first workflow
