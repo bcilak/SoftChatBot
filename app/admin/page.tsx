@@ -517,29 +517,17 @@ export default function AdminPage() {
                             <div style={styles.row}>
                                 <div style={{ ...styles.field, flex: 1 }}>
                                     <label style={styles.label}>
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.chatkit_file_upload}
-                                            onChange={(e) => setFormData({ ...formData, chatkit_file_upload: e.target.checked })}
-                                            style={styles.checkbox}
-                                        />
-                                        Dosya Yükleme
-                                    </label>
-                                    <span style={styles.hint}>Kullanıcıların dosya yüklemesine izin ver</span>
-                                </div>
-
-                                <div style={{ ...styles.field, flex: 1 }}>
-                                    <label style={styles.label}>UI Teması</label>
-                                    <select
-                                        value={formData.chatkit_ui_theme}
-                                        onChange={(e) => setFormData({ ...formData, chatkit_ui_theme: e.target.value as 'light' | 'dark' | 'auto' })}
-                                        style={styles.select}
-                                    >
-                                        <option value="light">Açık</option>
-                                        <option value="dark">Koyu</option>
-                                        <option value="auto">Otomatik</option>
-                                    </select>
-                                </div>
+                            <div style={styles.field}>
+                                <label style={styles.label}>
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.chatkit_file_upload}
+                                        onChange={(e) => setFormData({ ...formData, chatkit_file_upload: e.target.checked })}
+                                        style={styles.checkbox}
+                                    />
+                                    Dosya Yükleme
+                                </label>
+                                <span style={styles.hint}>Kullanıcıların dosya yüklemesine izin ver</span>
                             </div>
 
                             {formData.chatkit_file_upload && (
