@@ -42,7 +42,7 @@ export function defaultChatKitConfigurationFromEnv(): ChatKitConfiguration {
             enabled: envBool(process.env.CHATKIT_FILE_UPLOAD_ENABLED, false),
             max_file_size: process.env.CHATKIT_FILE_UPLOAD_MAX_SIZE
                 ? parseInt(process.env.CHATKIT_FILE_UPLOAD_MAX_SIZE, 10)
-                : 10485760, // 10MB default
+                : 10, // 10MB default (in MB, max 512)
             max_files: process.env.CHATKIT_FILE_UPLOAD_MAX_FILES
                 ? parseInt(process.env.CHATKIT_FILE_UPLOAD_MAX_FILES, 10)
                 : 5,

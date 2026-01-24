@@ -48,7 +48,7 @@ export default function AdminPage() {
         chatkit_history_enabled: false,
         chatkit_history_recent_threads: 10,
         chatkit_file_upload: false,
-        chatkit_file_max_size: 10485760,
+        chatkit_file_max_size: 10,
         chatkit_file_max_count: 5,
     });
 
@@ -530,16 +530,16 @@ export default function AdminPage() {
                             {formData.chatkit_file_upload && (
                                 <div style={styles.row}>
                                     <div style={{ ...styles.field, flex: 1 }}>
-                                        <label style={styles.label}>Maks Dosya Boyutu (bytes)</label>
+                                        <label style={styles.label}>Maks Dosya Boyutu (MB)</label>
                                         <input
                                             type="number"
-                                            min="1048576"
-                                            max="104857600"
+                                            min="1"
+                                            max="512"
                                             value={formData.chatkit_file_max_size}
-                                            onChange={(e) => setFormData({ ...formData, chatkit_file_max_size: parseInt(e.target.value) || 10485760 })}
+                                            onChange={(e) => setFormData({ ...formData, chatkit_file_max_size: parseInt(e.target.value) || 10 })}
                                             style={styles.input}
                                         />
-                                        <span style={styles.hint}>Varsayılan: 10MB (10485760 bytes)</span>
+                                        <span style={styles.hint}>Varsayılan: 10MB, Maksimum: 512MB</span>
                                     </div>
 
                                     <div style={{ ...styles.field, flex: 1 }}>
